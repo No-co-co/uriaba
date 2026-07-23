@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשימת קניות</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <span class="icon">🛒</span>
+            <span>רשימת קניות</span>
+        </div>
+        <div class="navbar-actions">
+            <a href="admin.html" id="adminLink" class="btn btn-sm btn-outline hidden">⚙️ ניהול</a>
+            <div class="navbar-user">
+                <span class="user-name"></span>
+                <div class="avatar"></div>
+            </div>
+            <button class="btn btn-sm btn-outline" id="logoutBtn">יציאה</button>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="lists" onclick="switchTab('lists')">📋 רשימות</button>
+            <button class="tab" data-tab="history" onclick="switchTab('history')">📜 היסטוריה</button>
+            <button class="tab" data-tab="smart" onclick="switchTab('smart')">🧠 רשימה חכמה</button>
+        </div>
+
+        <!-- Lists Tab -->
+        <div id="listsTab">
+            <div class="lists-grid" id="listsGrid"></div>
+
+            <div id="activeListSection" class="hidden">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 id="activeListName"></h2>
+                        <div class="flex gap-1">
+                            <button class="btn btn-sm btn-success" id="finishShoppingBtn" onclick="finishShopping()">✅ סיום קניות</button>
+                            <button class="btn btn-sm btn-outline" onclick="closeActiveList()">← חזרה</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="add-item-form" id="addItemForm">
+                            <input type="text" id="itemNameInput" placeholder="שם הפריט..." onkeydown="if(event.key==='Enter')addItem()">
+                            <button class="btn btn-outline btn-voice" id="voiceBtn" onclick="toggleVoice()" title="הוספה קולית בעברית">🎤</button>
+                            <select id="itemCategorySelect"></select>
+                            <input type="number" id="itemQuantityInput" placeholder="כמות" value="1" min="1">
+                            <button class="btn btn-primary" onclick="addItem()">➕ הוסף</button>
+                        </div>
+                        <div id="voiceStatus" class="hidden" style="text-align:center; padding: 8px; margin-bottom: 12px; border-radius: 8px; background: var(--primary-light); color: var(--primary-dark); font-size: 14px;">
+                            🎤 מקשיב... דבר בעברית
+                        </div>
+
+                        <div class="category-filter" id="categoryFilter"></div>
+
+                        <ul class="items-list" id="itemsList"></ul>
+
+                        <div class="empty-state hidden" id="emptyItems">
+                            <div class="icon">📝</div>
+                            <h3>הרשימה ריקה</h3>
+                            <p>הוסף פריטים לרשימה</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="historyTab" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📜 היסטוריית קניות</h2>
+                </div>
+                <div class="card-body" id="historyList">
+                    <div class="empty-state" id="emptyHistory">
+                        <div class="icon">📜</div>
+                        <h3>אין היסטוריה עדיין</h3>
+                        <p>לאחר סיום קניות, הרשימות ישמרו כאן</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smart List Tab -->
+        <div id="smartTab" class="hidden">
+            <div class="smart-list-card">
+                <h3>🧠 רשימה חכמה - המלצות קנייה</h3>
+                <p class="text-sm text-muted mb-2">ניתוח הרגלי הקנייה שלך והמלצות לחיסכון</p>
+                <button class="btn btn-primary" id="generateSmartListBtn" onclick="generateSmartList()">🔄 צור המלצות</button>
+                <div id="smartListResults" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New List Modal -->
+    <div class="modal-overlay" id="newListModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>רשימה חדשה</h3>
+                <button class="modal-close" onclick="closeModal('newListModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>שם הרשימה</label>
+                    <input type="text" id="newListName" placeholder="לדוגמה: קניות שבועיות" onkeydown="if(event.key==='Enter')createList()">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="createList()">צור רשימה</button>
+                <button class="btn btn-outline" onclick="closeModal('newListModal')">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div class="modal-overlay" id="editItemModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>עריכת פריט</h3>
+                <button class="modal-close" onclick="closeModal('editItemModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>שם הפריט</label>
+                    <input type="text" id="editItemName">
+                </div>
+                <div class="form-group">
+                    <label>קטגוריה</label>
+                    <select id="editItemCategory"></select>
+                </div>
+                <div class="form-group">
+                    <label>כמות</label>
+                    <input type="number" id="editItemQuantity" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="saveEditItem()">שמור</button>
+                <button class="btn btn-outline" onclick="closeModal('editItemModal')">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="smart-list.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשימת קניות - ניהול</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <span class="icon">⚙️</span>
+            <span>ניהול מערכת</span>
+        </div>
+        <div class="navbar-actions">
+            <a href="app.html" class="btn btn-sm btn-outline">🛒 לרשימות</a>
+            <div class="navbar-user">
+                <span class="user-name"></span>
+                <div class="avatar"></div>
+            </div>
+            <button class="btn btn-sm btn-outline" id="logoutBtn">יציאה</button>
+        </div>
+    </nav>
+
+    <div class="admin-layout">
+        <!-- Users List Panel -->
+        <div class="users-list-panel">
+            <div class="panel-header">
+                <h2>👥 משתמשים</h2>
+                <button class="btn btn-sm btn-primary" onclick="openModal('addUserModal')">➕</button>
+            </div>
+            <div id="usersList"></div>
+        </div>
+
+        <!-- User Detail Panel -->
+        <div class="user-detail-panel">
+            <div id="userDetailEmpty">
+                <div class="empty-state">
+                    <div class="icon">👤</div>
+                    <h3>בחר משתמש</h3>
+                    <p>בחר משתמש מהרשימה כדי לערוך את ההרשאות שלו</p>
+                </div>
+            </div>
+
+            <div id="userDetailContent" class="hidden">
+                <div class="panel-header">
+                    <div class="flex-between" style="width:100%">
+                        <div>
+                            <h2 id="detailUserName"></h2>
+                            <p class="text-sm text-muted" id="detailUserEmail"></p>
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="btn btn-sm btn-outline" onclick="resetPassword()">🔑 אפס סיסמה</button>
+                            <button class="btn btn-sm btn-danger" id="deleteUserBtn" onclick="deleteSelectedUser()">🗑️ מחק</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="form-group">
+                        <label>שם תצוגה</label>
+                        <input type="text" id="detailDisplayName">
+                    </div>
+
+                    <div class="form-group">
+                        <label>תפקיד</label>
+                        <select id="detailRole">
+                            <option value="user">משתמש רגיל</option>
+                            <option value="admin">אדמין</option>
+                        </select>
+                    </div>
+
+                    <h3 class="mt-2 mb-1">🔒 הרשאות</h3>
+                    <div class="permissions-grid" id="permissionsGrid"></div>
+
+                    <button class="btn btn-primary mt-2" onclick="saveUserDetails()">💾 שמור שינויים</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal-overlay" id="addUserModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>הוספת משתמש חדש</h3>
+                <button class="modal-close" onclick="closeModal('addUserModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>שם תצוגה</label>
+                    <input type="text" id="newUserName" placeholder="שם המשתמש">
+                </div>
+                <div class="form-group">
+                    <label>אימייל</label>
+                    <input type="email" id="newUserEmail" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>סיסמה</label>
+                    <input type="text" id="newUserPassword" placeholder="סיסמה (מינימום 6 תווים)">
+                </div>
+                <div class="form-group">
+                    <label>תפקיד</label>
+                    <select id="newUserRole">
+                        <option value="user">משתמש רגיל</option>
+                        <option value="admin">אדמין</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="addUser()">הוסף משתמש</button>
+                <button class="btn btn-outline" onclick="closeModal('addUserModal')">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div class="modal-overlay" id="resetPasswordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>איפוס סיסמה</h3>
+                <button class="modal-close" onclick="closeModal('resetPasswordModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-2">יישלח אימייל לאיפוס סיסמה למשתמש.</p>
+                <p id="resetPasswordEmail" style="font-weight: 600;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="confirmResetPassword()">שלח אימייל איפוס</button>
+                <button class="btn btn-outline" onclick="closeModal('resetPasswordModal')">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

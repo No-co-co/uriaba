@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשימת קניות - התחברות</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo">🛒</div>
+            <h1>רשימת קניות</h1>
+            <p class="subtitle">התחבר כדי להמשיך</p>
+
+            <div id="loginForm">
+                <div class="form-group">
+                    <label>אימייל</label>
+                    <input type="email" id="emailInput" placeholder="name@example.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label>סיסמה</label>
+                    <input type="password" id="passwordInput" placeholder="הכנס סיסמה" autocomplete="current-password">
+                </div>
+                <button class="btn btn-primary btn-block btn-lg mt-2" id="loginBtn" onclick="handleLogin()">
+                    התחבר
+                </button>
+                <p id="loginError" class="text-center text-sm mt-2" style="color: var(--danger); display: none;"></p>
+            </div>
+
+            <div id="setupSection" style="display: none;">
+                <div class="text-center mb-2">
+                    <p class="text-sm text-muted">טרם הוגדר אדמין. צור את המשתמש הראשון:</p>
+                </div>
+                <div class="form-group">
+                    <label>שם תצוגה</label>
+                    <input type="text" id="setupName" placeholder="השם שלך">
+                </div>
+                <div class="form-group">
+                    <label>אימייל</label>
+                    <input type="email" id="setupEmail" placeholder="name@example.com">
+                </div>
+                <div class="form-group">
+                    <label>סיסמה</label>
+                    <input type="password" id="setupPassword" placeholder="בחר סיסמה (מינימום 6 תווים)">
+                </div>
+                <button class="btn btn-success btn-block btn-lg mt-2" onclick="handleSetup()">
+                    צור אדמין והתחל
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', checkSetup);
+
+        document.getElementById('passwordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+        document.getElementById('emailInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+
+        async function checkSetup() {
+            try {
+                const snapshot = await rtdb.ref('users').orderByChild('role').equalTo('admin').limitToFirst(1).once('value');
+                if (!snapshot.exists()) {
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.getElementById('setupSection').style.display = 'block';
+                }
+            } catch (e) {
+                console.log('Firebase not configured yet or error:', e.message);
+            }
+        }
+
+        async function handleSetup() {
+            const name = document.getElementById('setupName').value.trim();
+            const email = document.getElementById('setupEmail').value.trim();
+            const password = document.getElementById('setupPassword').value;
+
+            if (!name || !email || !password) {
+                showToast('נא למלא את כל השדות', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                showToast('הסיסמה חייבת להכיל לפחות 6 תווים', 'error');
+                return;
+            }
+
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                await rtdb.ref('users/' + cred.user.uid).set({
+                    username: email,
+                    displayName: name,
+                    role: 'admin',
+                    permissions: PERMISSIONS.map(p => p.id),
+                    createdAt: Date.now(),
+                    createdBy: 'system'
+                });
+                showToast('אדמין נוצר בהצלחה!', 'success');
+                setTimeout(() => window.location.href = 'admin.html', 1000);
+            } catch (e) {
+                showToast(getFirebaseErrorMessage(e), 'error');
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            const errorEl = document.getElementById('loginError');
+
+            if (!email || !password) {
+                errorEl.textContent = 'נא למלא אימייל וסיסמה';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'מתחבר...';
+
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                const snapshot = await rtdb.ref('users/' + cred.user.uid).once('value');
+
+                if (!snapshot.exists()) {
+                    errorEl.textContent = 'המשתמש לא נמצא במערכת';
+                    errorEl.style.display = 'block';
+                    await auth.signOut();
+                    btn.disabled = false;
+                    btn.textContent = 'התחבר';
+                    return;
+                }
+
+                const userData = snapshot.val();
+                if (userData.role === 'admin') {
+                    window.location.href = 'admin.html';
+                } else {
+                    window.location.href = 'app.html';
+                }
+            } catch (e) {
+                errorEl.textContent = getFirebaseErrorMessage(e);
+                errorEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'התחבר';
+            }
+        }
+
+        function getFirebaseErrorMessage(error) {
+            const messages = {
+                'auth/user-not-found': 'משתמש לא נמצא',
+                'auth/wrong-password': 'סיסמה שגויה',
+                'auth/invalid-email': 'כתובת אימייל לא תקינה',
+                'auth/too-many-requests': 'יותר מדי ניסיונות. נסה שוב מאוחר יותר',
+                'auth/email-already-in-use': 'כתובת האימייל כבר בשימוש',
+                'auth/weak-password': 'הסיסמה חלשה מדי',
+                'auth/invalid-credential': 'אימייל או סיסמה שגויים'
+            };
+            return messages[error.code] || 'שגיאה: ' + error.message;
+        }
+    </script>
+    <script src="auth.js"></script>
+</body>
+</html>

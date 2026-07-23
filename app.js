@@ -461,6 +461,8 @@ function formatDate(timestamp) {
 // ===== קלט קולי =====
 let recognition = null;
 let isListening = false;
+let voiceTimeout = null;
+let accumulatedText = '';
 
 function toggleVoice() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -476,20 +478,22 @@ function toggleVoice() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
     recognition.lang = 'he-IL';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
 
     recognition.onstart = function() {
         isListening = true;
+        accumulatedText = '';
         document.getElementById('voiceBtn').classList.add('listening');
         document.getElementById('voiceStatus').classList.remove('hidden');
+        document.getElementById('voiceStatus').textContent = '🎤 מקשיב... דבר בעברית';
     };
 
     recognition.onresult = function(event) {
-        let finalText = '';
         let interimText = '';
+        let finalText = '';
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
                 finalText += event.results[i][0].transcript;
             } else {
@@ -497,27 +501,39 @@ function toggleVoice() {
             }
         }
 
-        if (finalText) {
-            processVoiceInput(finalText.trim());
+        if (interimText) {
+            document.getElementById('voiceStatus').textContent = '🎤 ' + interimText + '...';
         }
 
-        if (interimText) {
-            document.getElementById('voiceStatus').textContent = '🎤 ' + interimText;
+        if (finalText) {
+            accumulatedText = finalText.trim();
+            document.getElementById('voiceStatus').textContent = '✅ זוהה: ' + accumulatedText;
         }
     };
 
     recognition.onerror = function(event) {
         if (event.error === 'no-speech') {
-            document.getElementById('voiceStatus').textContent = '🎤 לא שמעתי... נסה שוב';
-        } else {
+            document.getElementById('voiceStatus').textContent = '🎤 לא שמעתי... לחץ שוב על המיקרופון';
+        } else if (event.error !== 'aborted') {
             showToast('שגיאה בזיהוי קולי: ' + event.error, 'error');
-            stopVoice();
         }
+        stopVoice();
     };
 
     recognition.onend = function() {
+        if (accumulatedText) {
+            processVoiceInput(accumulatedText);
+            accumulatedText = '';
+        }
         if (isListening) {
-            recognition.start();
+            setTimeout(function() {
+                if (isListening) {
+                    try {
+                        recognition.start();
+                        document.getElementById('voiceStatus').textContent = '🎤 מקשיב... אמור פריט נוסף או לחץ לעצירה';
+                    } catch(e) {}
+                }
+            }, 300);
         }
     };
 
@@ -527,48 +543,75 @@ function toggleVoice() {
 function stopVoice() {
     isListening = false;
     if (recognition) {
-        recognition.stop();
+        try { recognition.stop(); } catch(e) {}
         recognition = null;
     }
     document.getElementById('voiceBtn').classList.remove('listening');
     document.getElementById('voiceStatus').classList.add('hidden');
-    document.getElementById('voiceStatus').textContent = '🎤 מקשיב... דבר בעברית';
 }
 
 function processVoiceInput(text) {
-    document.getElementById('voiceStatus').textContent = '✅ זוהה: ' + text;
+    var hebrewNumbers = {
+        'אחד': 1, 'אחת': 1, 'שניים': 2, 'שתיים': 2, 'שני': 2, 'שתי': 2,
+        'שלוש': 3, 'שלושה': 3, 'ארבע': 4, 'ארבעה': 4, 'חמש': 5, 'חמישה': 5,
+        'שש': 6, 'שישה': 6, 'שבע': 7, 'שבעה': 7, 'שמונה': 8, 'תשע': 9, 'תשעה': 9,
+        'עשר': 10, 'עשרה': 10, 'חצי': 0.5
+    };
 
-    const items = text.split(/\s*(?:ו|,|\.)\s*/).filter(s => s.trim());
+    var items = text.split(/\s*(?:,|\.)\s*/).filter(function(s) { return s.trim(); });
 
-    items.forEach(itemText => {
-        let name = itemText.trim();
-        let quantity = 1;
+    items.forEach(function(itemText) {
+        var subItems = itemText.split(/\s+ו(?=[א-ת])/);
 
-        const qtyMatch = name.match(/(\d+)\s+(.+)/);
-        if (qtyMatch) {
-            quantity = parseInt(qtyMatch[1]);
-            name = qtyMatch[2];
-        }
+        subItems.forEach(function(sub) {
+            var name = sub.trim();
+            if (!name) return;
+            var quantity = 1;
 
-        const qtyMatchEnd = name.match(/(.+?)\s+(\d+)$/);
-        if (qtyMatchEnd && !qtyMatch) {
-            name = qtyMatchEnd[1];
-            quantity = parseInt(qtyMatchEnd[2]);
-        }
+            var qtyMatch = name.match(/^(\d+)\s+(.+)/);
+            if (qtyMatch) {
+                quantity = parseInt(qtyMatch[1]);
+                name = qtyMatch[2];
+            } else {
+                var qtyMatchEnd = name.match(/(.+?)\s+(\d+)$/);
+                if (qtyMatchEnd) {
+                    name = qtyMatchEnd[1];
+                    quantity = parseInt(qtyMatchEnd[2]);
+                } else {
+                    for (var word in hebrewNumbers) {
+                        var re = new RegExp('^' + word + '\\s+(.+)');
+                        var m = name.match(re);
+                        if (m) {
+                            quantity = hebrewNumbers[word];
+                            name = m[1];
+                            break;
+                        }
+                        re = new RegExp('(.+?)\\s+' + word + '$');
+                        m = name.match(re);
+                        if (m) {
+                            name = m[1];
+                            quantity = hebrewNumbers[word];
+                            break;
+                        }
+                    }
+                }
+            }
 
-        const category = guessCategory(name);
+            name = name.trim();
+            var category = guessCategory(name);
 
-        if (name && activeListId && hasPermission(currentUser, 'add')) {
-            rtdb.ref('items/' + activeListId).push().set({
-                name: name,
-                category: category,
-                quantity: quantity,
-                checked: false,
-                addedBy: currentUser.uid,
-                addedAt: Date.now()
-            });
-            showToast('נוסף: ' + name + (quantity > 1 ? ' ×' + quantity : ''), 'success');
-        }
+            if (name && name.length > 0 && activeListId && hasPermission(currentUser, 'add')) {
+                rtdb.ref('items/' + activeListId).push().set({
+                    name: name,
+                    category: category,
+                    quantity: quantity,
+                    checked: false,
+                    addedBy: currentUser.uid,
+                    addedAt: Date.now()
+                });
+                showToast('נוסף: ' + name + (quantity > 1 ? ' ×' + quantity : ''), 'success');
+            }
+        });
     });
 }
 

@@ -11,8 +11,37 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAdmin = user;
         setupNavbar(user);
         loadUsers();
+        loadApiKey();
     });
 });
+
+// ===== API Key Management =====
+async function loadApiKey() {
+    var snapshot = await rtdb.ref('settings/geminiApiKey').once('value');
+    var key = snapshot.val();
+    if (key) {
+        document.getElementById('apiKeyInput').value = key;
+    }
+}
+
+async function saveApiKey() {
+    var key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) {
+        showToast('נא להזין מפתח API', 'error');
+        return;
+    }
+    try {
+        await rtdb.ref('settings/geminiApiKey').set(key);
+        showToast('מפתח API נשמר בהצלחה', 'success');
+    } catch (e) {
+        showToast('שגיאה בשמירת המפתח', 'error');
+    }
+}
+
+function toggleApiKeyVisibility() {
+    var input = document.getElementById('apiKeyInput');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
 
 function loadUsers() {
     rtdb.ref('users').on('value', (snapshot) => {

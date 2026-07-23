@@ -22,6 +22,23 @@
         </div>
     </nav>
 
+    <!-- Settings Bar -->
+    <div style="max-width: 1100px; margin: 16px auto 0; padding: 0 24px;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-body" style="padding: 16px 20px;">
+                <div class="flex-between" style="flex-wrap: wrap; gap: 12px;">
+                    <h3 style="margin: 0;">🔑 מפתח Gemini API</h3>
+                    <div class="flex gap-1" style="flex-wrap: wrap;">
+                        <input type="password" id="apiKeyInput" placeholder="הזן מפתח API..." style="width: 280px; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-family: 'Heebo', sans-serif; font-size: 14px;">
+                        <button class="btn btn-sm btn-outline" onclick="toggleApiKeyVisibility()">👁️</button>
+                        <button class="btn btn-sm btn-primary" onclick="saveApiKey()">שמור</button>
+                    </div>
+                </div>
+                <p class="text-sm text-muted mt-1">המפתח נשמר ב-Firebase ומשמש לרשימה החכמה. קבל מפתח מ-Google AI Studio.</p>
+            </div>
+        </div>
+    </div>
+
     <div class="admin-layout">
         <!-- Users List Panel -->
         <div class="users-list-panel">
